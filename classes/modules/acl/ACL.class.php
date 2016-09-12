@@ -354,12 +354,12 @@ class ModuleACL extends Module {
 			/**
 			 * Для авторизованного пользователя данный код будет работать быстрее
 			 */
-			if ($oTopic->getBlog()->getUserIsAdministrator() or $oTopic->getBlog()->getUserIsModerator()) {
+			if ($oTopic->getBlog()->getUserIsAdministrator()) {
 				return true;
 			}
 		} else {
 			$oBlogUser=$this->Blog_GetBlogUserByBlogIdAndUserId($oTopic->getBlogId(),$oUser->getId());
-			if ($oBlogUser and ($oBlogUser->getIsModerator() or $oBlogUser->getIsAdministrator())) {
+			if ($oBlogUser and $oBlogUser->getIsAdministrator()) {
 				return true;
 			}
 		}

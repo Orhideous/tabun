@@ -104,27 +104,30 @@ class ActionLogin extends Action {
 
 	/**
 	 * Авторизация для xmpp Сервера
+	 *
+	 * Внутренее API
 	 */
-	protected function EventAjaxProsody() {
+	protected function EventAjaxProsody()
+	{
 		$this->Viewer_SetResponseAjax('json', true, false);
+		$sProsodyKey = getRequestStr('key', '');
 
-		if (!is_string(getRequest('key')) or !slow_equals(getRequest('key'), Config::Get('general.prosody.key'))) {
-			$this->Viewer_AssignAjax('status','fail');
-                        $this->Message_AddErrorSingle($this->Lang_Get('system_error'));
+		if (!slow_equals($sProsodyKey, Config::Get('general.prosody.key'))) {
+			$this->Viewer_AssignAjax('status', 'fail');
+			$this->Message_AddErrorSingle($this->Lang_Get('system_error'));
 			return;
 		}
-                if (!is_string(getRequest('username')) or !is_string(getRequest('password'))) {
-			$this->Viewer_AssignAjax('status','fail');
-                        $this->Message_AddErrorSingle($this->Lang_Get('system_error'));
-                        return;
-                }
-		if ($oUser=$this->User_GetUserByLogin(getRequest('username'))) {
-			if (validate_password(getRequestStr('password'), $oUser->getPassword())) {
-				$this->Viewer_AssignAjax('status','ok');
+
+		$sLogin = getRequestStr('username');
+		$sPassword = getRequestStr('password');
+
+		if ($oUser = $this->User_GetUserByLogin($sLogin)) {
+			if (validate_password($sPassword, $oUser->getPassword())) {
+				$this->Viewer_AssignAjax('status', 'ok');
 				return;
 			}
 		}
-		$this->Viewer_AssignAjax('status','fail');
+		$this->Viewer_AssignAjax('status', 'fail');
 		$this->Message_AddErrorSingle($this->Lang_Get('user_login_bad'));
 	}
 

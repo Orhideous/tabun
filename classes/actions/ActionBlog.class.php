@@ -403,42 +403,46 @@ class ActionBlog extends Action {
 		if (isPost('submit_blog_admin')) {
 			$this->Security_ValidateSendForm();
 
-			$aUserRank=getRequest('user_rank',array());
-			if (!is_array($aUserRank)) {
-				$aUserRank=array();
+			$aUserPerm = getRequest('user_perm',array());
+			if (!is_array($aUserPerm)) {
+				$aUserPerm = array();
 			}
-			foreach ($aUserRank as $sUserId => $sRank) {
-				$sRank=(string)$sRank;
+			foreach ($aUserPerm as $sUserId => $aPerm) {
 				if (!($oBlogUser=$this->Blog_GetBlogUserByBlogIdAndUserId($oBlog->getId(),$sUserId))) {
 					$this->Message_AddError($this->Lang_Get('system_error'),$this->Lang_Get('error'));
 					break;
 				}
+
 				/**
-				 * Увеличиваем число читателей блога
+				 * Если разрешили читать посты, увеличиваем число читателей блога
+				 * (в соответствии со старым механизмом бана)
 				 */
-				if (in_array($sRank,array('administrator','moderator','reader')) and $oBlogUser->getUserRole()==ModuleBlog::BLOG_USER_ROLE_BAN) {
+				if (($aPerm['topics_read']) and !($oBlogUser->getTopicPermissions()->check(Permissions::READ))) {
 					$oBlog->setCountUser($oBlog->getCountUser()+1);
 				}
 
-				switch ($sRank) {
-					case 'administrator':
-						$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_ADMINISTRATOR);
-						break;
-					case 'moderator':
-						$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_MODERATOR);
-						break;
-					case 'reader':
-						$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_USER);
-						break;
-					case 'ban':
-						if ($oBlogUser->getUserRole()!=ModuleBlog::BLOG_USER_ROLE_BAN) {
-							$oBlog->setCountUser($oBlog->getCountUser()-1);
-						}
-						$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_BAN);
-						break;
-					default:
-						$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_GUEST);
+				/**
+				 * Если запретили читать посты, уменьшаем число читателей блога
+				 * (в соответствии со старым механизмом бана)
+				 */
+				if (!($aPerm['topics_read']) and $oBlogUser->getTopicPermissions()->check(Permissions::READ)) {
+					$oBlog->setCountUser($oBlog->getCountUser()-1);
 				}
+
+				$oBlogUser->patchBlogPermissions(Permissions::UPDATE, isset($aPerm['blog_update']));
+
+				$oBlogUser->patchTopicPermissions(Permissions::CREATE, isset($aPerm['topics_create']));
+				$oBlogUser->patchTopicPermissions(Permissions::READ  , isset($aPerm['topics_read']  ));
+				$oBlogUser->patchTopicPermissions(Permissions::UPDATE, isset($aPerm['topics_update']));
+				$oBlogUser->patchTopicPermissions(Permissions::DELETE, isset($aPerm['topics_delete']));
+
+				$oBlogUser->patchCommentPermissions(Permissions::CREATE, isset($aPerm['comments_create']));
+				$oBlogUser->patchCommentPermissions(Permissions::READ  , isset($aPerm['comments_read']  ));
+				$oBlogUser->patchCommentPermissions(Permissions::UPDATE, isset($aPerm['comments_update']));
+				$oBlogUser->patchCommentPermissions(Permissions::DELETE, isset($aPerm['comments_delete']));
+
+				$oBlogUser->patchVotePermissions(Permissions::CREATE, isset($aPerm['votes_create']));
+
 				$this->Blog_UpdateRelationBlogUser($oBlogUser);
 				$this->Message_AddNoticeSingle($this->Lang_Get('blog_admin_users_submit_ok'));
 			}
@@ -669,17 +673,10 @@ class ActionBlog extends Action {
 			return parent::EventNotFound();
 		}
 		/**
-		 * Определяем права на отображение записи из закрытого блога
+		 * Определяем права на просмотр топика в блоге
 		 */
-		if($oTopic->getBlog()->getType()=='close'
-			and (!$this->oUserCurrent
-				|| !in_array(
-					$oTopic->getBlog()->getId(),
-					$this->Blog_GetAccessibleBlogsByUser($this->oUserCurrent)
-				)
-			)
-		) {
-			$this->Message_AddErrorSingle($this->Lang_Get('blog_close_show'),$this->Lang_Get('not_access'));
+		if(!$this->ACL_IsAllowReadTopicsInBlog($oTopic->getBlog(),$this->oUserCurrent)) {
+			$this->Message_AddErrorSingle($this->Lang_Get('topic_no_permission_read'),$this->Lang_Get('not_access'));
 			return Router::Action('error');
 		}
 		/**
@@ -773,7 +770,7 @@ class ActionBlog extends Action {
 		 * Текущая страница
 		 */
 		$iPage= $this->GetParamEventMatch(1,2) ? $this->GetParamEventMatch(1,2) : 1;
-		$aBlogUsersResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),ModuleBlog::BLOG_USER_ROLE_USER,$iPage,Config::Get('module.blog.users_per_page'));
+		$aBlogUsersResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),null,$iPage,Config::Get('module.blog.users_per_page'),array('not_banned'=>1,'not_deleted'=>1));
 		$aBlogUsers=$aBlogUsersResult['collection'];
 		/**
 		 * Формируем постраничность
@@ -812,7 +809,7 @@ class ActionBlog extends Action {
 		$sShowType=in_array($this->GetParamEventMatch(0,0),array('bad','new','newall','discussed','top')) ? $this->GetParamEventMatch(0,0) : 'good';
 		if (!in_array($sShowType,array('discussed','top'))) {
 			$sPeriod='all';
-		}
+		} 
 		/**
 		 * Проверяем есть ли блог с таким УРЛ
 		 */
@@ -822,14 +819,7 @@ class ActionBlog extends Action {
 		/**
 		 * Определяем права на отображение закрытого блога
 		 */
-		if($oBlog->getType()=='close'
-			and (!$this->oUserCurrent
-				or !in_array(
-					$oBlog->getId(),
-					$this->Blog_GetAccessibleBlogsByUser($this->oUserCurrent)
-				)
-			)
-		) {
+		if(!$this->ACL_IsAllowReadTopicsInBlog($oBlog,$this->oUserCurrent)) {
 			$bCloseBlog=true;
 		} else {
 			$bCloseBlog=false;
@@ -886,11 +876,11 @@ class ActionBlog extends Action {
 		/**
 		 * Получаем список юзеров блога
 		 */
-		$aBlogUsersResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),ModuleBlog::BLOG_USER_ROLE_USER,1,Config::Get('module.blog.users_per_page'));
+		$aBlogUsersResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),null,1,Config::Get('module.blog.users_per_page'),array('not_banned'=>1,'not_deleted'=>1));
 		$aBlogUsers=$aBlogUsersResult['collection'];
-		$aBlogModeratorsResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),ModuleBlog::BLOG_USER_ROLE_MODERATOR);
+		$aBlogModeratorsResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),null,1,Config::Get('module.blog.users_per_page'),array('moder'=>1,'not_deleted'=>1));
 		$aBlogModerators=$aBlogModeratorsResult['collection'];
-		$aBlogAdministratorsResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),ModuleBlog::BLOG_USER_ROLE_ADMINISTRATOR);
+		$aBlogAdministratorsResult=$this->Blog_GetBlogUsersByBlogId($oBlog->getId(),null,1,Config::Get('module.blog.users_per_page'),array('admin'=>1,'not_deleted'=>1));
 		$aBlogAdministrators=$aBlogAdministratorsResult['collection'];
 		/**
 		 * Для админов проекта получаем список блогов и передаем их во вьювер
@@ -978,14 +968,21 @@ class ActionBlog extends Action {
 			return;
 		}
 		/**
-		 * Проверяем разрешено ли постить комменты
+		 * Проверяем разрешено ли постить комменты (по разрешениям)
+		 */
+		if (!$this->ACL_IsAllowAddCommentToTopic($oTopic,$this->oUserCurrent)) {
+			$this->Message_AddErrorSingle($this->Lang_Get('topic_comment_no_permission'),$this->Lang_Get('error'));
+			return;
+		}
+		/**
+		 * Проверяем разрешено ли постить комменты (по рейтингу)
 		 */
 		if (!$this->ACL_CanPostComment($this->oUserCurrent) and !$this->oUserCurrent->isAdministrator()) {
 			$this->Message_AddErrorSingle($this->Lang_Get('topic_comment_acl'),$this->Lang_Get('error'));
 			return;
 		}
 		/**
-		 * Проверяем разрешено ли постить комменты по времени
+		 * Проверяем разрешено ли постить комменты (по времени)
 		 */
 		if (!$this->ACL_CanPostCommentTime($this->oUserCurrent) and !$this->oUserCurrent->isAdministrator()) {
 			$this->Message_AddErrorSingle($this->Lang_Get('topic_comment_limit'),$this->Lang_Get('error'));
@@ -1094,10 +1091,10 @@ class ActionBlog extends Action {
 
 				$this->Comment_AddCommentOnline($oCommentOnline);
 
-                /**
-                 * Добавляем комментарий в поисковый индекс
-                 */
-                $this->SearchIndexer_CommentIndex($oCommentNew);
+				/**
+				 * Добавляем комментарий в поисковый индекс
+				 */
+				$this->SearchIndexer_CommentIndex($oCommentNew);
 			}
 			/**
 			 * Сохраняем дату последнего коммента для юзера
@@ -1129,6 +1126,8 @@ class ActionBlog extends Action {
 			 * Добавляем событие в ленту
 			 */
 			$this->Stream_write($oCommentNew->getUserId(), 'add_comment', $oCommentNew->getId(), $oTopic->getPublish() && $oTopic->getBlog()->getType()!='close');
+
+			$this->Comment_PostProcessComment($oCommentNew);
 		} else {
 			$this->Message_AddErrorSingle($this->Lang_Get('system_error'),$this->Lang_Get('error'));
 		}
@@ -1158,17 +1157,10 @@ class ActionBlog extends Action {
 			return;
 		}
 		/**
-		 * Определяем права на отображение записи из закрытого блога
+		 * Разрешено ли читать комментарии?
 		 */
-		if($oTopic->getBlog()->getType()=='close'
-			and (!$this->oUserCurrent
-				|| !in_array(
-					$oTopic->getBlog()->getId(),
-					$this->Blog_GetAccessibleBlogsByUser($this->oUserCurrent)
-				)
-			)
-		) {
-			$this->Message_AddErrorSingle($this->Lang_Get('blog_close_show'),$this->Lang_Get('not_access'));
+		if(!$this->ACL_IsAllowReadCommentsInBlog($oTopic->getBlog(),$this->oUserCurrent)) {
+			$this->Message_AddErrorSingle($this->Lang_Get('topic_comment_no_permission_read'),$this->Lang_Get('not_access'));
 			return;
 		}
 		/**
@@ -1307,6 +1299,7 @@ class ActionBlog extends Action {
 				$oBlogUserNew->setBlogId($oBlog->getId());
 				$oBlogUserNew->setUserId($oUser->getId());
 				$oBlogUserNew->setUserRole(ModuleBlog::BLOG_USER_ROLE_INVITE);
+				$oBlogUserNew->setDeleted(false);
 
 				if($this->Blog_AddRelationBlogUser($oBlogUserNew)) {
 					$aResult[]=array(
@@ -1335,7 +1328,7 @@ class ActionBlog extends Action {
 					case ($aBlogUsers[$oUser->getId()]->getUserRole()==ModuleBlog::BLOG_USER_ROLE_INVITE):
 						$sErrorMessage=$this->Lang_Get('blog_user_already_invited',array('login'=>htmlspecialchars($sUser)));
 						break;
-					case ($aBlogUsers[$oUser->getId()]->getUserRole()>ModuleBlog::BLOG_USER_ROLE_GUEST):
+					case ($aBlogUsers[$oUser->getId()]->getUserRole()>ModuleBlog::BLOG_USER_ROLE_GUEST || $aBlogUsers[$oUser->getId()]->getUserRole()==ModuleBlog::BLOG_USER_ROLE_BAN):
 						$sErrorMessage=$this->Lang_Get('blog_user_already_exists',array('login'=>htmlspecialchars($sUser)));
 						break;
 					case ($aBlogUsers[$oUser->getId()]->getUserRole()==ModuleBlog::BLOG_USER_ROLE_REJECT):
@@ -1550,7 +1543,7 @@ class ActionBlog extends Action {
 		if(!$oBlogUser=$this->Blog_GetBlogUserByBlogIdAndUserId($oBlog->getId(),$this->oUserCurrent->getId())) {
 			return $this->EventNotFound();
 		}
-		if($oBlogUser->getUserRole()>ModuleBlog::BLOG_USER_ROLE_GUEST) {
+		if($oBlogUser->getUserRole()>ModuleBlog::BLOG_USER_ROLE_GUEST || $oBlogUser->getUserRole()==ModuleBlog::BLOG_USER_ROLE_BAN) {
 			$sMessage=$this->Lang_Get('blog_user_invite_already_done');
 			$this->Message_AddError($sMessage,$this->Lang_Get('error'),true);
 			Router::Location(Router::GetPath('talk'));
@@ -1727,22 +1720,26 @@ class ActionBlog extends Action {
 		 * Получаем текущий статус пользователя в блоге
 		 */
 		$oBlogUser=$this->Blog_GetBlogUserByBlogIdAndUserId($oBlog->getId(),$this->oUserCurrent->getId());
-		if (!$oBlogUser || ($oBlogUser->getUserRole()<ModuleBlog::BLOG_USER_ROLE_GUEST && $oBlog->getType()=='close')) {
+		if (!$oBlogUser || $oBlogUser->getDeleted() || $oBlogUser->getUserRole()==ModuleBlog::BLOG_USER_ROLE_INVITE || $oBlogUser->getUserRole()==ModuleBlog::BLOG_USER_ROLE_REJECT) {
 			if ($oBlog->getOwnerId()!=$this->oUserCurrent->getId()) {
 				/**
 				 * Присоединяем юзера к блогу
 				 */
 				$bResult=false;
-				if($oBlogUser) {
-					$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_USER);
+				if($oBlogUser && $oBlogUser->getUserRole()!=ModuleBlog::BLOG_USER_ROLE_REJECT) {
+					if ($oBlogUser->getUserRole()==ModuleBlog::BLOG_USER_ROLE_INVITE) {
+						$oBlogUser->setUserRole(ModuleBlog::BLOG_USER_ROLE_USER);
+					}
+					$oBlogUser->setDeleted(false);
 					$bResult = $this->Blog_UpdateRelationBlogUser($oBlogUser);
 				} elseif($oBlog->getType()=='open' || in_array($oBlog->getId(), Config::Get('module.blog.semi_closed_id'))  ) {
-                    // Orhideous Semi-close blogs
-                    $oBlogUserNew=Engine::GetEntity('Blog_BlogUser');
-                    $oBlogUserNew->setBlogId($oBlog->getId());
-                    $oBlogUserNew->setUserId($this->oUserCurrent->getId());
-                    $oBlogUserNew->setUserRole(ModuleBlog::BLOG_USER_ROLE_USER);
-                    $bResult = $this->Blog_AddRelationBlogUser($oBlogUserNew);
+					// Orhideous Semi-close blogs
+					$oBlogUserNew=Engine::GetEntity('Blog_BlogUser');
+					$oBlogUserNew->setBlogId($oBlog->getId());
+					$oBlogUserNew->setUserId($this->oUserCurrent->getId());
+					$oBlogUserNew->setUserRole(ModuleBlog::BLOG_USER_ROLE_USER);
+					$oBlogUserNew->setDeleted(false);
+					$bResult = $this->Blog_AddRelationBlogUser($oBlogUserNew);
 				}
 				if ($bResult) {
 					$this->Message_AddNoticeSingle($this->Lang_Get('blog_join_ok'),$this->Lang_Get('attention'));
@@ -1772,8 +1769,7 @@ class ActionBlog extends Action {
 				$this->Message_AddErrorSingle($this->Lang_Get('blog_join_error_self'),$this->Lang_Get('attention'));
 				return;
 			}
-		}
-		if ($oBlogUser && $oBlogUser->getUserRole()>ModuleBlog::BLOG_USER_ROLE_GUEST) {
+		} else if ($oBlogUser && !$oBlogUser->getDeleted()) {
 			/**
 			 * Покидаем блог
 			 */

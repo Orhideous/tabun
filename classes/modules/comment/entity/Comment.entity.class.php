@@ -529,6 +529,16 @@ class ModuleComment_EntityComment extends Entity {
 	}
 	
 	/**
+	 * Проверяет права на удаление комментария.
+	 *
+	 * @param ModuleUser_EntityUser $oUser
+	 * @return bool
+	 */
+	public function testAllowDelete($oUser) {
+		return $this->ACL_IsAllowDeleteComment($oUser,$this);
+	}
+
+	/**
 	 * Проверяет, был ли комментарий изменён или заблокирован для изменения. Обёртка для comment.tpl
 	 *
 	 * @return bool

@@ -377,11 +377,17 @@ class ActionProfile extends Action {
 			$this->Viewer_Assign('oUserInviteFrom',$oUserInviteFrom);
 		}
 		/**
-		 * Получаем список юзеров блога
+		 * Получаем список блогов юзера
 		 */
-		$aBlogUsers=$this->Blog_GetBlogUsersByUserId($this->oUserProfile->getId(),ModuleBlog::BLOG_USER_ROLE_USER);
-		$aBlogModerators=$this->Blog_GetBlogUsersByUserId($this->oUserProfile->getId(),ModuleBlog::BLOG_USER_ROLE_MODERATOR);
-		$aBlogAdministrators=$this->Blog_GetBlogUsersByUserId($this->oUserProfile->getId(),ModuleBlog::BLOG_USER_ROLE_ADMINISTRATOR);
+		$aBlogUsers=$this->Blog_GetBlogUsersByUserId($this->oUserProfile->getId(),null,false,array('not_banned'=>1,'not_deleted'=>1));
+		$aBlogModerators=$this->Blog_GetBlogUsersByUserId($this->oUserProfile->getId(),null,false,array('moder'=>1,'not_deleted'=>1));
+		$aBlogAdministrators=$this->Blog_GetBlogUsersByUserId($this->oUserProfile->getId(),null,false,array('admin'=>1,'not_deleted'=>1));
+		if ($aBlogModerators) {
+			$aBlogUsers=array_diff($aBlogUsers,array_keys($aBlogModerators['collection']));
+		}
+		if ($aBlogAdministrators) {
+			$aBlogUsers=array_diff($aBlogUsers,array_keys($aBlogAdministrators['collection']));
+		}
 		/**
 		 * Получаем список блогов которые создал юзер
 		 */

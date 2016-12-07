@@ -7,7 +7,7 @@
         <div id="comment_content_id_{$oComment->getId()}" class="comment-content">
             <div class="text"><em>{$aLang.comment_was_hidden}</em></div>
         </div>
-    {elseif !$oComment->getDelete() or $bOneComment or ($oUserCurrent and $oUserCurrent->isAdministrator())}
+    {elseif !$oComment->getDelete() or $bOneComment or ($oUserCurrent and $oComment->testAllowDelete($oUserCurrent))}
         <a name="comment{$oComment->getId()}"></a>
         <div data-id="{$oComment->getId()}" class="folding"></div>
         <div id="comment_content_id_{$oComment->getId()}" class="comment-content">
@@ -79,19 +79,19 @@
                 <a href="#" title="{$aLang.comment_goto_child}">↓</a>
             </li>
             {if $oUserCurrent}
-                {if !$oComment->getDelete() and !$bAllowNewComment}
+                {if !$oComment->getDelete() and !$bAllowNewComment and $bAddCommentPermission}
                     <li>
                         <a href="#" onclick="ls.comments.toggleCommentForm({$oComment->getId()}); return false;" class="reply-link link-dotted">{$aLang.comment_answer}</a>
                     </li>
                 {/if}
 
-                {if !$oComment->getDelete() and $oUserCurrent and $oUserCurrent->isAdministrator()}
+                {if !$oComment->getDelete() and $oComment->testAllowDelete($oUserCurrent)}
                     <li>
                         <a href="#" class="comment-delete link-dotted" onclick="ls.comments.toggle(this,{$oComment->getId()}); return false;">{$aLang.comment_delete}</a>
                     </li>
                 {/if}
 
-                {if $oComment->getDelete() and $oUserCurrent and $oUserCurrent->isAdministrator()}
+                {if $oComment->getDelete() and $oComment->testAllowDelete($oUserCurrent)}
                     <li>
                         <a href="#" class="comment-repair link-dotted" onclick="ls.comments.toggle(this,{$oComment->getId()}); return false;">{$aLang.comment_repair}</a>
                     </li>

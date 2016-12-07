@@ -136,8 +136,6 @@
 					<li>
 						<a href="{router page='blog'}edit/{$oBlog->getId()}/" title="{$aLang.blog_edit}" class="edit">{$aLang.blog_edit}</a></li>
 						{if $oUserCurrent->isAdministrator()}
-							<li><a href="#" title="{$aLang.blog_delete}" id="blog_delete_show" class="delete">{$aLang.blog_delete}</a>
-						{else}
 							<a href="{router page='blog'}delete/{$oBlog->getId()}/?security_ls_key={$LIVESTREET_SECURITY_KEY}" title="{$aLang.blog_delete}" onclick="return confirm('{$aLang.blog_admin_delete_confirm}');" >{$aLang.blog_delete}</a>
 						{/if}
 					</li>
@@ -185,7 +183,7 @@
 
 
 {if $bCloseBlog}
-	{$aLang.blog_close_show}
+	{$aLang.topic_no_permission_read}
 {else}
 	{include file='topic_list.tpl'}
 {/if}

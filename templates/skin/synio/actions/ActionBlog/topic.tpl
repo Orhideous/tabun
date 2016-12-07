@@ -10,7 +10,11 @@
 	iCountComment=$oTopic->getCountComment()
 	sDateReadLast=$oTopic->getDateRead()
 	bAllowNewComment=$oTopic->getForbidComment()
+	bAddCommentPermission=$oTopic->getIsAllowAddComment()
+	bReadCommentPermission=$oTopic->getIsAllowReadComments()
 	sNoticeNotAllow=$aLang.topic_comment_notallow
+	sNoticeNoPermission=$aLang.topic_comment_no_permission
+	sNoticeNoReadPermission=$aLang.topic_comment_no_permission_read
 	sNoticeCommentAdd=$aLang.topic_comment_add
 	bAllowSubscribe=true
 	bNoCommentFavourites=false

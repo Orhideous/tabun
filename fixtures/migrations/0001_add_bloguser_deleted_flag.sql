@@ -1,0 +1,2 @@
+ALTER TABLE `ls_blog_user`
+  ADD COLUMN `deleted` BOOLEAN  NOT NULL  DEFAULT FALSE;

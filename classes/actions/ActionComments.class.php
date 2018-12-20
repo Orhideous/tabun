@@ -92,6 +92,7 @@ class ActionComments extends Action
          */
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign("aComments", $aComments);
+        $this->Viewer_Assign('bVoteInfoEnabledForComments', Config::Get('vote_list.comment.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'comment', false));
         /**
          * Устанавливаем title страницы
          */

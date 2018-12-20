@@ -662,93 +662,118 @@ class ModuleACL extends Module
         return $this::EDIT_ALLOW_FIX | ($userIsNotAuthor && Config::Get('acl.edit.comment.enable_lock') ? $this::EDIT_ALLOW_LOCK : 0);
     }
 
-    public function CheckSimpleAccessLevel($req, $oUser, $oTarget, $sTargetType, $bCheckForTopicOfComment=false)
+    // oTarget — Объект, к которому нужно проверить доступ при единичном запросе, ИЛИ true, если известно, что доступ к объекту уже есть
+    public function VoteListCheckAccess($oUser, $oTarget, $sTargetType, $bRequireSuperuser=false)
     {
-        if ($req == 8) {
-            return true;
-        }
-        if ($req == 0) {
+        $bEnable = Config::Get('vote_list.'.$sTargetType.'.enable');
+        if (!$bEnable) {
+            // Deny:
             return false;
         }
-        if (!$oUser && $req < 8) {
+        
+        if ($bRequireSuperuser) {
+            $iUserRequiredLevel = Config::Get('vote_list.'.$sTargetType.'.superuser_required_level');
+            $fUserRequiredRating = Config::Get('vote_list.'.$sTargetType.'.superuser_required_rating');
+        } else {
+            $iUserRequiredLevel = Config::Get('vote_list.'.$sTargetType.'.user_required_level');
+            $fUserRequiredRating = Config::Get('vote_list.'.$sTargetType.'.user_required_rating');
+        }
+        
+        if ($oUser) {
+            $fUserRating = $oUser->getRating();
+        } else {
+            $fUserRating = 0.0;
+        }
+        
+        if ($fUserRating < $fUserRequiredRating) {
+            // Deny:
             return false;
         }
-        if ($req == 7) {
-            return true;
-        }
-        if ($req >= 1) {
-            if ($oUser->isAdministrator()) {
-                return true;
-            }
-            if ($req >= 2) {
+        
+        switch ($iUserRequiredLevel) {
+            case 128:
+                // Allow|Deny:
+                return $oUser && $oUser->isAdministrator();
+            case 2:
+                if (!$oUser) {
+                    // Deny:
+                    return false;
+                }
+                // fall-through
+                // Если пользователь авторизован, то дальше проверяем остальные права на доступ, но проверяя на предмет авторизации в нужных местах
+            case 1:
+                if ($oUser && $oUser->isAdministrator()) {
+                    // Allow:
+                    return true;
+                }
+                
+                if ($oTarget === true) {
+                    // Allow:
+                    return true;
+                }
+                
                 switch ($sTargetType) {
                     case 'comment':
-                        if ($bCheckForTopicOfComment) {
-                            $oTopic = $oTarget;
-                            break;
-                        }
                         if ($oTarget->getTargetType() === 'topic') {
                             $oTopic = $oTarget->getTarget();
                         } elseif ($oTarget->getTargetType() === 'talk') {
-                            $oTalk = $oTarget->getTarget();
+                            // На данный момент невозможно даже оценивать комменты в ЛС
+                            // Deny:
+                            return false;
                         }
                         break;
                     case 'topic':
                         $oTopic = $oTarget;
                         break;
-                    case 'talk':
-                        $oTalk = $oTarget;
-                        break;
                     case 'blog':
                         $oBlog = $oTarget;
                         break;
                     case 'user':
-                        $oTargetUser = $oTarget;
-                        break;
+                        // Allow:
+                        return true;
                 }
+                
                 if (isset($oTopic) || isset($oBlog)) {
                     if (!isset($oBlog) && $oTopic) {
                         $oBlog = $oTopic->getBlog();
                     }
-                    if ($req >= 3 && ($oBlog->getUserIsAdministrator() || $oBlog->getOwnerId() == $oUser->getId())) {
+                    if ($oUser && $oBlog->getOwnerId() == $oUser->getId()) {
+                        // Allow:
                         return true;
                     }
-                    if ($req >= 4 && $oBlog->getUserIsModerator()) {
-                        return true;
-                    }
-                    if ($req >= 5) {
-                        if (in_array($oBlog->getId(), $this->Blog_GetAccessibleBlogsByUser($oUser)) ||
-                            (
-                                in_array($oBlog->getType(), ['open', 'personal'])  && (
-                                    !($oBlogUser = $this->Blog_GetBlogUserByBlogIdAndUserId($oBlog->getId(), $oUser->getId())) ||
-                                    $oBlogUser->getUserRole() != ModuleBlog::BLOG_USER_ROLE_BAN
-                                )
-                            )
-                        ) {
-                            if ($req == 6) {
-                                return true;
-                            }
-                            if ($req == 5 && $oTarget->getUserId() == $oUser->getId()) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                if (isset($oTalk)) {
-                    if ($req >= 5 && $this->ModuleTalk_GetTalkUser($oTalk->getId(), $oUser->getId())) {
-                        if ($req == 6) {
+                    $bAllowBansInOpenBlogs = true;
+                    if (in_array($oBlog->getType(), ['open', 'personal'])) {
+                        if ($bAllowBansInOpenBlogs) {
+                            if ($oUser) {
+                                $oBlogUser = $this->Blog_GetBlogUserByBlogIdAndUserId($oBlog->getId(), $oUser->getId());
+                                if ($oBlogUser && $oBlogUser->getUserRole() == ModuleBlog::BLOG_USER_ROLE_BAN) {
+                                    // Deny:
+                                    return false;
+                                } else {
+                                    // Allow:
+                                    return true;
+                                }
+                            } else {
+								// Allow:
+								return true;
+							}
+                        } else {
+                            // Allow:
                             return true;
                         }
-                        if ($req == 5 && $oTarget->getUserId() == $oUser->getId()) {
-                            return true;
+                    } else {
+                        if ($oUser) {
+                            $oBlogUser = $this->Blog_GetBlogUserByBlogIdAndUserId($oBlog->getId(), $oUser->getId());
+                            if ($oBlogUser && $oBlogUser->getUserRole() != ModuleBlog::BLOG_USER_ROLE_BAN) {
+                                // Allow:
+                                return true;
+                            }
                         }
                     }
                 }
-                if (isset($oTargetUser)) {
-                    return true;
-                }
-            }
+                break;
         }
+        // Deny:
         return false;
     }
 }

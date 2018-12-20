@@ -3,7 +3,6 @@
 {assign var="oVote" value=$oTopic->getVote()}
 {assign var="oTopicId" value=$oTopic->getId()}
 {assign var="oTopicRating" value=$oTopic->getRating()}
-{assign var="bVoteInfoEnabled" value=$LS->ACL_CheckSimpleAccessLevel($oConfig->GetValue('vote_state.topic.na_enable_level'), $oUserCurrent, $oTopic, 'topic')}
 
 {if $oVote || ($oUserCurrent && $oTopic->getUserId() == $oUserCurrent->getId()) || strtotime($oTopic->getDateAdd()) < $smarty.now-$oConfig->GetValue('acl.vote.topic.limit_time')}
 	{assign var="bVoteInfoShow" value=true}
@@ -56,8 +55,8 @@
 								{if strtotime($oTopic->getDateAdd()) > $smarty.now-$oConfig->GetValue('acl.vote.topic.limit_time')} vote-enabled{/if}
 							{/if}
 						{/if}
-						{if $bVoteInfoEnabled} vote-info-enabled{/if}
 					{/if}
+					{if $bVoteInfoEnabledForTopics} vote-info-enabled{/if}
 					">
 
 					{assign var="iTopicCountVote" value=$oTopic->getCountVote()}

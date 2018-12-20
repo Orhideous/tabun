@@ -644,6 +644,7 @@ class ActionBlog extends Action
             $this->Viewer_Assign('sPeriodSelectCurrent', $sPeriod);
             $this->Viewer_Assign('sPeriodSelectRoot', Router::GetPath('blog').$sShowType.'/');
         }
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         /**
          * Устанавливаем шаблон вывода
          */
@@ -752,6 +753,8 @@ class ActionBlog extends Action
         $this->Viewer_Assign('oTopic', $oTopic);
         $this->Viewer_Assign('aComments', $aComments);
         $this->Viewer_Assign('iMaxIdComment', $iMaxIdComment);
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForComments', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'comment', false));
         /**
          * Устанавливаем title страницы
          */
@@ -929,6 +932,8 @@ class ActionBlog extends Action
         $this->Viewer_Assign('iCountBlogAdministrators', $aBlogAdministratorsResult['count']+1);
         $this->Viewer_Assign('oBlog', $oBlog);
         $this->Viewer_Assign('bCloseBlog', $bCloseBlog);
+        $this->Viewer_Assign('bVoteInfoEnabledForBlog', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'blog', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         /**
          * Устанавливаем title страницы
          */

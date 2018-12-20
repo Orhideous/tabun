@@ -78,6 +78,7 @@ class ActionUserfeed extends Action
          */
         $this->Hook_Run('topics_list_show', array('aTopics'=>$aTopics));
         $this->Viewer_Assign('aTopics', $aTopics);
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         if (count($aTopics)) {
             $this->Viewer_Assign('iUserfeedLastId', end($aTopics)->getId());
         }
@@ -119,6 +120,7 @@ class ActionUserfeed extends Action
          */
         $oViewer=$this->Viewer_GetLocalViewer();
         $oViewer->Assign('aTopics', $aTopics);
+        $oViewer->Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         $this->Viewer_AssignAjax('result', $oViewer->Fetch('topic_list.tpl'));
         $this->Viewer_AssignAjax('topics_count', count($aTopics));
 

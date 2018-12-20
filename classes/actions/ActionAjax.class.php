@@ -1411,46 +1411,31 @@ class ActionAjax extends Action
     
     protected function EventGetObjectVotes()
     {
-        $targetType = getRequestStr('targetType', null, 'post');
-        $targetId = (int) getRequestStr('targetId', null, 'post');
-        switch ($targetType) {
+        $sTargetType = getRequestStr('targetType', null, 'post');
+        $iTargetId = (int) getRequestStr('targetId', null, 'post');
+        switch ($sTargetType) {
             case 'comment':
-                $oTarget = $this->Comment_GetCommentById($targetId);
-                $newAgeEnableLevel = Config::Get('vote_state.comment.na_enable_level');
-                $oldAgeEnableLevel = Config::Get('vote_state.comment.oa_enable_level');
-                $ageSwitchDate = Config::Get('vote_state.comment.as_date');
-                $dateSort = Config::Get('vote_state.comment.date_sort');
+                $oTarget = $this->Comment_GetCommentById($iTargetId);
                 break;
             case 'topic':
-                $oTarget = $this->Topic_GetTopicById($targetId);
-                $newAgeEnableLevel = Config::Get('vote_state.topic.na_enable_level');
-                $oldAgeEnableLevel = Config::Get('vote_state.topic.oa_enable_level');
-                $ageSwitchDate = Config::Get('vote_state.topic.as_date');
-                $dateSort = Config::Get('vote_state.topic.date_sort');
+                $oTarget = $this->Topic_GetTopicById($iTargetId);
                 break;
             case 'blog':
-                $oTarget = $this->Blog_GetBlogById($targetId);
-                $newAgeEnableLevel = Config::Get('vote_state.blog.na_enable_level');
-                $oldAgeEnableLevel = Config::Get('vote_state.blog.oa_enable_level');
-                $ageSwitchDate = Config::Get('vote_state.blog.as_date');
-                $dateSort = Config::Get('vote_state.blog.date_sort');
+                $oTarget = $this->Blog_GetBlogById($iTargetId);
                 break;
             case 'user':
-                $oTarget = $this->User_GetUserById($targetId);
-                $newAgeEnableLevel = Config::Get('vote_state.user.na_enable_level');
-                $oldAgeEnableLevel = Config::Get('vote_state.user.oa_enable_level');
-                $ageSwitchDate = Config::Get('vote_state.user.as_date');
-                $dateSort = Config::Get('vote_state.user.date_sort');
+                $oTarget = $this->User_GetUserById($iTargetId);
                 break;
             default:
                 $this->Message_AddErrorSingle($this->Lang_Get('system_error'), $this->Lang_Get('error'));
                 return;
         }
-        /**
-         * Пользователь авторизован?
-         */
-        if (!$this->oUserCurrent && $newAgeEnableLevel < 8) {
-            $this->Message_AddErrorSingle($this->Lang_Get('need_authorization'), $this->Lang_Get('error'));
+        $iExposeFromDate = Config::Get('vote_list.'.$sTargetType.'.expose_from_date');
+        $iDateSortMode = Config::Get('vote_list.'.$sTargetType.'.date_sort_mode');
+        
+        // Предварительная проверка на статус функции и уровень и рейтинг пользователя
+        if (!$this->ACL_VoteListCheckAccess($this->oUserCurrent, true, $sTargetType, false)) {
+            $this->Message_AddErrorSingle($this->Lang_Get('not_access'), $this->Lang_Get('error'));
             return;
         }
         
@@ -1462,40 +1447,37 @@ class ActionAjax extends Action
             return;
         }
         
-        if (!$this->ACL_CheckSimpleAccessLevel($newAgeEnableLevel, $this->oUserCurrent, $oTarget, $targetType)) {
+        $bUserAccessGranted = $this->ACL_VoteListCheckAccess($this->oUserCurrent, $oTarget, $sTargetType, false);
+        
+        if (!$bUserAccessGranted) {
             $this->Message_AddErrorSingle($this->Lang_Get('not_access'), $this->Lang_Get('error'));
             return;
         }
         
-        $aVotes = $this->Vote_SimpleGetVoteByOneTarget($targetId, $targetType);
-        $aResult = array();
+        $bSuperuserAccessGranted = $this->ACL_VoteListCheckAccess($this->oUserCurrent, $oTarget, $sTargetType, true);
+        
+        $aVotes = $this->Vote_SimpleGetVoteByOneTarget($iTargetId, $sTargetType);
+        $aResult = [];
         foreach ($aVotes as $oVote) {
             $oUser = $this->User_GetUserById($oVote->getVoterId());
-            $bShowUser = $oUser && (strtotime($oVote->getDate()) > $ageSwitchDate || $this->ACL_CheckSimpleAccessLevel($oldAgeEnableLevel, $this->oUserCurrent, $oTarget, $targetType));
-            $aResult[] = array(
+            $bShowUser = $oUser && (strtotime($oVote->getDate()) > $iExposeFromDate || $bSuperuserAccessGranted);
+            $aResult[] = [
                 'voterName' => $bShowUser ? $oUser->getLogin() : null,
                 'voterAvatar' => $bShowUser ? $oUser->getProfileAvatarPath() : null,
                 'value' => (float) $oVote->getValue(),
-                'date' => (string) $oVote->getDate().'+03:00',
-            );
+                'date' => date('c', strtotime($oVote->getDate())),
+            ];
         }
-        usort($aResult, $dateSort==SORT_ASC?'_gov_s_date_asc':'_gov_s_date_desc');
+        if ($iDateSortMode == SORT_ASC) {
+            $sorter = function($a, $b) {
+                return strtotime($a['date']) - strtotime($b['date']);
+            };
+        } else {
+            $sorter = function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            };
+        }
+        usort($aResult, $sorter);
         $this->Viewer_AssignAjax('aVotes', $aResult);
     }
-}
-function _gov_s_date_asc($a, $b)
-{
-    $a_time = strtotime($a['date']);
-    $b_time = strtotime($b['date']);
-    if ($a_time > $b_time) {
-        return 1;
-    }
-    if ($a_time < $b_time) {
-        return -1;
-    }
-    return 0;
-}
-function _gov_s_date_desc($a, $b)
-{
-    return -_gov_s_date_asc($a, $b);
 }

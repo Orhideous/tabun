@@ -2,7 +2,6 @@
 <div class="profile">
 	{hook run='profile_top_begin' oUserProfile=$oUserProfile}
 	
-	{assign var="bVoteInfoEnabled" value=$LS->ACL_CheckSimpleAccessLevel($oConfig->GetValue('vote_state.user.na_enable_level'), $oUserCurrent, $oUserProfile, 'user')}
 	<div class="vote-profile">
 		<div id="vote_area_user_{$oUserProfileId}" class="vote-topic
 																	{if $oUserProfile->getRating() > 0}
@@ -26,7 +25,7 @@
 																	{/if}
 																	
 																	{if $oUserCurrent and $oUserCurrent->getId()==$oUserProfile->getId() and !$oVote and $LS->ACL_CanVoteUser($oUserCurrent,$oUserProfile) and $LS->ACL_CanVoteUser($oUserCurrent, $oUserProfile)} vote-enabled{/if}
-																	{if $bVoteInfoEnabled} vote-info-enabled{/if}
+																	{if $bVoteInfoEnabledForProfile} vote-info-enabled{/if}
 																	">
 			{assign var="iUserProfileCountVote" value=$oUserProfile->getCountVote()}
 			<div class="vote-item vote-up" data-direction="1" data-target_id="{$oUserProfileId}" data-target_type="user"></div>

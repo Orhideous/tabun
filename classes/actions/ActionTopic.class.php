@@ -242,6 +242,7 @@ class ActionTopic extends Action
          */
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign('aTopics', $aTopics);
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('topic_menu_'.$this->sCurrentEvent));
     }
     /**

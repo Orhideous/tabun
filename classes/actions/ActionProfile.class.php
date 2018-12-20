@@ -193,6 +193,8 @@ class ActionProfile extends Action
          */
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign('aTopics', $aTopics);
+        $this->Viewer_Assign('bVoteInfoEnabledForProfile', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'user', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_publication').' '.$this->oUserProfile->getLogin());
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_publication_blog'));
         $this->Viewer_SetHtmlRssAlternate(Router::GetPath('rss').'personal_blog/'.$this->oUserProfile->getLogin().'/', $this->oUserProfile->getLogin());
@@ -228,6 +230,8 @@ class ActionProfile extends Action
          */
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign('aComments', $aComments);
+        $this->Viewer_Assign('bVoteInfoEnabledForProfile', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'user', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForComments', Config::Get('vote_list.comment.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'comment', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_publication').' '.$this->oUserProfile->getLogin());
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_publication_comment'));
         /**
@@ -271,6 +275,8 @@ class ActionProfile extends Action
          */
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign('aTopics', $aTopics);
+        $this->Viewer_Assign('bVoteInfoEnabledForProfile', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'user', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile').' '.$this->oUserProfile->getLogin());
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile_favourites'));
         /**
@@ -317,6 +323,8 @@ class ActionProfile extends Action
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign('aTopics', $aTopics);
         $this->Viewer_Assign('sFavouriteTag', htmlspecialchars($sTag));
+        $this->Viewer_Assign('bVoteInfoEnabledForProfile', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'user', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForTopics', Config::Get('vote_list.topic.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'topic', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile').' '.$this->oUserProfile->getLogin());
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile_favourites'));
         /**
@@ -352,6 +360,8 @@ class ActionProfile extends Action
          */
         $this->Viewer_Assign('aPaging', $aPaging);
         $this->Viewer_Assign('aComments', $aComments);
+        $this->Viewer_Assign('bVoteInfoEnabledForProfile', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'user', false));
+        $this->Viewer_Assign('bVoteInfoEnabledForComments', Config::Get('vote_list.comment.enable_from_list') && $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'comment', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile').' '.$this->oUserProfile->getLogin());
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile_favourites_comments'));
         /**
@@ -415,6 +425,7 @@ class ActionProfile extends Action
         $this->Viewer_Assign('aBlogsOwner', $aBlogsOwner);
         $this->Viewer_Assign('aUsersFriend', $aUsersFriend['collection']);
         $this->Viewer_Assign('aUserFields', $aUserFields);
+        $this->Viewer_Assign('bVoteInfoEnabledForProfile', $this->ACL_VoteListCheckAccess($this->oUserCurrent, true, 'user', false));
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile').' '.$this->oUserProfile->getLogin());
         $this->Viewer_AddHtmlTitle($this->Lang_Get('user_menu_profile_whois'));
         /**

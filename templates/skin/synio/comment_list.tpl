@@ -7,6 +7,8 @@
     {assign var="oTopic" value=$oComment->getTarget()}
     {if $oTopic}
         {assign var="oBlog" value=$oTopic->getBlog()}
+    {else}
+        {assign var="oBlog" value=null}
     {/if}
     {if $oUserCurrent}
         {assign var="oCommentRating" value=$oComment->getRating()}
@@ -66,8 +68,10 @@
                     <a href="{$oBlog->getUrlFull()}" class="blog-name">{$oBlog->getTitle()|escape:'html'}</a>
                     &rarr;
                 {/if}
-                <a href="{$oTopic->getUrl()}" class="comment-path-topic">{$oTopic->getTitle()|escape:'html'}</a>
-                <a href="{$oTopic->getUrl()}#comments"  class="comment-path-comments">{$oTopic->getCountComment()}</a>
+                {if $oTopic}
+                    <a href="{$oTopic->getUrl()}" class="comment-path-topic">{$oTopic->getTitle()|escape:'html'}</a>
+                    <a href="{$oTopic->getUrl()}#comments"  class="comment-path-comments">{$oTopic->getCountComment()}</a>
+                {/if}
             </div>
         </div>
     </section>

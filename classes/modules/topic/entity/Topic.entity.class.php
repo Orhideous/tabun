@@ -388,7 +388,9 @@ class ModuleTopic_EntityTopic extends Entity
      */
     public function getUrl()
     {
-        if ($this->getBlog()->getType()=='personal') {
+        // getBlog() может оказаться null из-за старых багов старого движка,
+        // когда пост ещё существует в базе, а блог уже нет
+        if (!$this->getBlog() || $this->getBlog()->getType() == 'personal') {
             return Router::GetPath('blog').$this->getId().'.html';
         } else {
             return Router::GetPath('blog').$this->getBlog()->getUrl().'/'.$this->getId().'.html';

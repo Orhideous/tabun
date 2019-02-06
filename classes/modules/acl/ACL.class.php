@@ -709,6 +709,10 @@ class ModuleACL extends Module
                 if (isset($oTopic) || isset($oBlog)) {
                     if (!isset($oBlog) && $oTopic) {
                         $oBlog = $oTopic->getBlog();
+                        // Обход старого бага: в базе могут попадаться посты из удалённых блогов
+                        if (!$oBlog) {
+                            return false;
+                        }
                     }
                     if ($req >= 3 && ($oBlog->getUserIsAdministrator() || $oBlog->getOwnerId() == $oUser->getId())) {
                         return true;

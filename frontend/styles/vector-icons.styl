@@ -1,0 +1,18 @@
+vector_icon_head()
+  display inline-block
+
+vector_icon_style(fill, valign, margins)
+  background fill
+  vertical-align valign
+  margin margins
+
+vector_icon_image(width, height, image_url)
+  width width
+  height height
+  -webkit-mask url(image_url)
+  mask url(image_url)
+  mask-image url(image_url)
+
+.vicon
+  vector_icon_head()
+

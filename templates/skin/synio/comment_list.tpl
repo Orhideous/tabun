@@ -59,7 +59,7 @@
                     <span class="vote-count" id="vote_total_comment_{$oCommentId}" data-target_id="{$oCommentId}" data-target_type="comment" data-count="{$oCommentVoteCount}">{$oCommentRating}</span>
                 </div>
                 {/if}
-                {include file='comment_modify_notice.tpl' bGetShort=true}
+                {include file='comment_modify_notice.tpl'}
             {/if}
             <div>
                 {if $oBlog}

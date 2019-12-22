@@ -240,14 +240,16 @@ a.reply-link
     margin-bottom 10px
 
 .modify-notice
-  font-size 10px
-  font-style italic
-  &.self-modified
-    color #69b55b
-  &.adm-modified
-    color #aaaa00
-  &.hard-modified
-    color #d5883c
+  >.vicon
+    vector_icon_style(#999, bottom, 0 0.3em 0 0)
+  >.vicon-edit
+    vector_icon_image(9pt * (576 / 512), 9pt, "../node_modules/@fortawesome/fontawesome-free/svgs/solid/edit.svg")
+  >.vicon-admin
+    vector_icon_image(9pt * (640 / 512), 9pt, "../node_modules/@fortawesome/fontawesome-free/svgs/solid/user-cog.svg")
+  >.vicon-answers
+    vector_icon_image(9pt * (512 / 512), 9pt, "../node_modules/@fortawesome/fontawesome-free/svgs/solid/stream.svg")
+  >.vicon-lock
+    vector_icon_image(9pt * (448 / 512), 9pt, "../node_modules/@fortawesome/fontawesome-free/svgs/solid/lock.svg")
 
 .comment:not(.editable)
   .comment-save-edit-bw,

@@ -102,35 +102,31 @@ class ActionSettings extends Action
          */
         $this->Viewer_SetResponseAjax('jsonIframe', false);
 
-        if (!isset($_FILES['foto']['tmp_name'])) {
-            return false;
-        }
         /**
          * Копируем загруженный файл
          */
-        $sFileTmp=Config::Get('sys.cache.dir').func_generator();
-        if (!move_uploaded_file($_FILES['foto']['tmp_name'], $sFileTmp)) {
-            return false;
+        $filefoto = base64_decode($_POST["image"]);
+        $sFile = Config::Get('sys.cache.dir').func_generator();
+        file_put_contents($sFile, $filefoto);
+        
+        if ($sFileWeb=$this->User_UploadFoto($sFile, $this->oUserCurrent)) {
+            /**
+             * Удаляем старые аватарки
+             */
+            $this->oUserCurrent->setProfileFoto($sFileWeb);
+            $this->User_Update($this->oUserCurrent);
+
+            $this->Image_RemoveFile($sFilePreview);
+            /**
+             * Удаляем из сессии
+             */
+            $this->Session_Drop('sFotoFileTmp');
+            $this->Session_Drop('sFotoFilePreviewTmp');
+            $this->Viewer_AssignAjax('sFile', $this->oUserCurrent->getProfileFoto());
+            $this->Viewer_AssignAjax('sTitleUpload', $this->Lang_Get('settings_profile_photo_change'));
+        } else {
+            $this->Message_AddError($this->Lang_Get('settings_profile_avatar_error'), $this->Lang_Get('error'));
         }
-        /**
-         * Ресайзим и сохраняем именьшенную копию
-         * Храним две копии - мелкую для показа пользователю и крупную в качестве исходной для ресайза
-         */
-        $sDir="/tmp/fotos/{$this->oUserCurrent->getId()}";
-        if ($sFile=$this->Image_Resize($sFileTmp, $sDir, 'original', Config::Get('view.img_max_width'), Config::Get('view.img_max_height'), 1000, null, true)) {
-            if ($sFilePreview=$this->Image_Resize($sFileTmp, $sDir, 'preview', Config::Get('view.img_max_width'), Config::Get('view.img_max_height'), 200, null, true)) {
-                /**
-                 * Сохраняем в сессии временный файл с изображением
-                 */
-                $this->Session_Set('sFotoFileTmp', $sFile);
-                $this->Session_Set('sFotoFilePreviewTmp', $sFilePreview);
-                $this->Viewer_AssignAjax('sTmpFile', $this->Image_GetWebPath($sFilePreview));
-                unlink($sFileTmp);
-                return;
-            }
-        }
-        $this->Message_AddError($this->Image_GetLastError(), $this->Lang_Get('error'));
-        unlink($sFileTmp);
     }
     /**
      * Вырезает из временной фотки область нужного размера, ту что задал пользователь
@@ -229,30 +225,26 @@ class ActionSettings extends Action
          */
         $this->Viewer_SetResponseAjax('jsonIframe', false);
 
-        if (!isset($_FILES['avatar']['tmp_name'])) {
-            return false;
-        }
-        /**
-         * Копируем загруженный файл
-         */
-        $sFileTmp=Config::Get('sys.cache.dir').func_generator();
-        if (!move_uploaded_file($_FILES['avatar']['tmp_name'], $sFileTmp)) {
-            return false;
-        }
-        /**
-         * Ресайзим и сохраняем уменьшенную копию
-         */
-        $sDir="tmp/avatars/{$this->oUserCurrent->getId()}";
-        if ($sFileAvatar=$this->Image_Resize($sFileTmp, $sDir, 'original', Config::Get('view.img_max_width'), Config::Get('view.img_max_height'), 200, null, true)) {
+        $fileavatar = base64_decode($_POST["image"]);
+        $sFileAvatar = Config::Get('sys.cache.dir').func_generator();
+        file_put_contents($sFileAvatar, $fileavatar);
+
+        if ($sFileWeb=$this->User_UploadAvatar($sFileAvatar, $this->oUserCurrent)) {
             /**
-             * Зписываем в сессию
+             * Удаляем старые аватарки
              */
-            $this->Session_Set('sAvatarFileTmp', $sFileAvatar);
-            $this->Viewer_AssignAjax('sTmpFile', $this->Image_GetWebPath($sFileAvatar));
+            if ($sFileWeb!=$this->oUserCurrent->getProfileAvatar()) {
+                $this->User_DeleteAvatar($this->oUserCurrent);
+            }
+            $this->oUserCurrent->setProfileAvatar($sFileWeb);
+
+            $this->User_Update($this->oUserCurrent);
+            $this->Session_Drop('sAvatarFileTmp');
+            $this->Viewer_AssignAjax('sFile', $this->oUserCurrent->getProfileAvatarPath(100));
+            $this->Viewer_AssignAjax('sTitleUpload', $this->Lang_Get('settings_profile_avatar_change'));
         } else {
-            $this->Message_AddError($this->Image_GetLastError(), $this->Lang_Get('error'));
+            $this->Message_AddError($this->Lang_Get('settings_profile_avatar_error'), $this->Lang_Get('error'));
         }
-        unlink($sFileTmp);
     }
     /**
      * Вырезает из временной аватарки область нужного размера, ту что задал пользователь

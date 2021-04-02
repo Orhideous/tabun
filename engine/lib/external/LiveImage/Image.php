@@ -117,6 +117,13 @@ class LiveImage {
 	 */
 	public function __construct($sFile) {
         $this->magic = new Imagick();
+		try {
+			$this->magic->readImage($sFile);
+		} catch (Exception $e) {
+			$this->set_last_error(4);
+			return false;
+		}
+		
         $this->fileInfo = finfo_open(FILEINFO_MIME_TYPE);
 
 		if(!$sFile) {
@@ -124,7 +131,6 @@ class LiveImage {
 			return false;
 		}
 
-        $this->magic->readImage($sFile);
         $sMime = finfo_file($this->fileInfo, $sFile);
 
         $iFileLength = (int) $this->magic->getImageLength();
@@ -152,13 +158,6 @@ class LiveImage {
 				$this->set_last_error(5);				
 				return false;
 		}		
-		/**
-		 * Если изображение не удалось создать
-		 */
-		if(!$this->magic){
-			$this->set_last_error(4);
-			return false;
-		}
 
 		$this->image=$this->magic;
 		$this->width=(int)$this->magic->getImageWidth();

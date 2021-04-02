@@ -75,10 +75,8 @@ class ActionSettings extends Action
     protected function RegisterEvent()
     {
         $this->AddEventPreg('/^profile$/i', '/^upload-avatar/i', '/^$/i', 'EventUploadAvatar');
-        $this->AddEventPreg('/^profile$/i', '/^resize-avatar/i', '/^$/i', 'EventResizeAvatar');
         $this->AddEventPreg('/^profile$/i', '/^remove-avatar/i', '/^$/i', 'EventRemoveAvatar');
         $this->AddEventPreg('/^profile$/i', '/^upload-foto/i', '/^$/i', 'EventUploadFoto');
-        $this->AddEventPreg('/^profile$/i', '/^resize-foto/i', '/^$/i', 'EventResizeFoto');
         $this->AddEventPreg('/^profile$/i', '/^remove-foto/i', '/^$/i', 'EventRemoveFoto');
         $this->AddEvent('profile', 'EventProfile');
         $this->AddEvent('invite', 'EventInvite');
@@ -110,72 +108,6 @@ class ActionSettings extends Action
         file_put_contents($sFile, $filefoto);
         
         if ($sFileWeb=$this->User_UploadFoto($sFile, $this->oUserCurrent)) {
-            /**
-             * Удаляем старые аватарки
-             */
-            $this->oUserCurrent->setProfileFoto($sFileWeb);
-            $this->User_Update($this->oUserCurrent);
-
-            $this->Image_RemoveFile($sFilePreview);
-            /**
-             * Удаляем из сессии
-             */
-            $this->Session_Drop('sFotoFileTmp');
-            $this->Session_Drop('sFotoFilePreviewTmp');
-            $this->Viewer_AssignAjax('sFile', $this->oUserCurrent->getProfileFoto());
-            $this->Viewer_AssignAjax('sTitleUpload', $this->Lang_Get('settings_profile_photo_change'));
-        } else {
-            $this->Message_AddError($this->Lang_Get('settings_profile_avatar_error'), $this->Lang_Get('error'));
-        }
-    }
-    /**
-     * Вырезает из временной фотки область нужного размера, ту что задал пользователь
-     */
-    protected function EventResizeFoto()
-    {
-        /**
-         * Устанавливаем формат Ajax ответа
-         */
-        $this->Viewer_SetResponseAjax('json');
-        /**
-         * Достаем из сессии временный файл
-         */
-        $sFile=$this->Session_Get('sFotoFileTmp');
-        $sFilePreview=$this->Session_Get('sFotoFilePreviewTmp');
-        if (!file_exists($sFile)) {
-            $this->Message_AddErrorSingle($this->Lang_Get('system_error'));
-            return;
-        }
-        /**
-         * Определяем размер большого фото для подсчета множителя пропорции
-         * @todo: Move processing flow to Image.class
-         */
-        $fRation=1;
-        $magic = new Imagick();
-        $magic->readImage($sFile);
-        $aSizeFile=(int) $magic->getImageLength();
-        $iImageWidth = $magic->getImageWidth();
-        if ($aSizeFile and $iImageWidth) {
-            $fRation=$iImageWidth/200; // 200 - размер превью по которой пользователь определяет область для ресайза
-            if ($fRation<1) {
-                $fRation=1;
-            }
-        }
-        /**
-         * Получаем размер области из параметров
-         */
-        $aSize=array();
-        $aSizeTmp=getRequest('size');
-        if (isset($aSizeTmp['x']) and is_numeric($aSizeTmp['x'])
-            and isset($aSizeTmp['y']) and is_numeric($aSizeTmp['y'])
-                and isset($aSizeTmp['x2']) and is_numeric($aSizeTmp['x2'])
-                    and isset($aSizeTmp['y2']) and is_numeric($aSizeTmp['y2'])) {
-            $aSize=array('x1'=>round($fRation*$aSizeTmp['x']),'y1'=>round($fRation*$aSizeTmp['y']),'x2'=>round($fRation*$aSizeTmp['x2']),'y2'=>round($fRation*$aSizeTmp['y2']));
-        }
-        /**
-         * Вырезаем аватарку
-         */
-        if ($sFileWeb=$this->User_UploadFoto($sFile, $this->oUserCurrent, $aSize)) {
             /**
              * Удаляем старые аватарки
              */
@@ -230,54 +162,6 @@ class ActionSettings extends Action
         file_put_contents($sFileAvatar, $fileavatar);
 
         if ($sFileWeb=$this->User_UploadAvatar($sFileAvatar, $this->oUserCurrent)) {
-            /**
-             * Удаляем старые аватарки
-             */
-            if ($sFileWeb!=$this->oUserCurrent->getProfileAvatar()) {
-                $this->User_DeleteAvatar($this->oUserCurrent);
-            }
-            $this->oUserCurrent->setProfileAvatar($sFileWeb);
-
-            $this->User_Update($this->oUserCurrent);
-            $this->Session_Drop('sAvatarFileTmp');
-            $this->Viewer_AssignAjax('sFile', $this->oUserCurrent->getProfileAvatarPath(100));
-            $this->Viewer_AssignAjax('sTitleUpload', $this->Lang_Get('settings_profile_avatar_change'));
-        } else {
-            $this->Message_AddError($this->Lang_Get('settings_profile_avatar_error'), $this->Lang_Get('error'));
-        }
-    }
-    /**
-     * Вырезает из временной аватарки область нужного размера, ту что задал пользователь
-     */
-    protected function EventResizeAvatar()
-    {
-        /**
-         * Устанавливаем формат Ajax ответа
-         */
-        $this->Viewer_SetResponseAjax('json');
-        /**
-         * Получаем файл из сессии
-         */
-        $sFileAvatar=$this->Session_Get('sAvatarFileTmp');
-        if (!file_exists($sFileAvatar)) {
-            $this->Message_AddErrorSingle($this->Lang_Get('system_error'));
-            return;
-        }
-        /**
-         * Получаем размер области из параметров
-         */
-        $aSize=array();
-        $aSizeTmp=getRequest('size');
-        if (isset($aSizeTmp['x']) and is_numeric($aSizeTmp['x'])
-            and isset($aSizeTmp['y']) and is_numeric($aSizeTmp['y'])
-                and isset($aSizeTmp['x2']) and is_numeric($aSizeTmp['x2'])
-                    and isset($aSizeTmp['y2']) and is_numeric($aSizeTmp['y2'])) {
-            $aSize=array('x1'=>$aSizeTmp['x'],'y1'=>$aSizeTmp['y'],'x2'=>$aSizeTmp['x2'],'y2'=>$aSizeTmp['y2']);
-        }
-        /**
-         * Вырезаем аватарку
-         */
-        if ($sFileWeb=$this->User_UploadAvatar($sFileAvatar, $this->oUserCurrent, $aSize)) {
             /**
              * Удаляем старые аватарки
              */
